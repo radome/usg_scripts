@@ -39,6 +39,13 @@ def change_tags_on_batch(tags,tag_group,mx_tube,mode)
   # find the library id's of the mx_tube
   lib_ids = mx.aliquots.map(&:library_id)
   
+  if lib_ids.size == tags.size
+    puts "lib <=> tag count ok"
+  else
+    puts "Library count: #{lib_ids.size} tag count: #{tags.size}"
+    break
+  end
+  
   samples = mx.aliquots.map(&:sample).flatten.map(&:name)
   
   sample_tag_hash = Hash[samples.zip(tags)]
