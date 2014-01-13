@@ -21,7 +21,7 @@ samples.each do |sample_info|
       sample.name = sample_info[1]
       sample.assets.select {|a| a.class == SampleTube}.map {|st| st.name = sample_info[1]; st.save!}
       sample.assets.select {|a| a.class == LibraryTube}.map {|lt| lt.name = sample_info[1]+" "+"#{lt.id.to_s}"; lt.save!}
-      sample.save(false)
+      sample.save!
     end
   end
 end
