@@ -3,39 +3,38 @@ def change_tags_on_batch(tags,tag_group,mx_tube,mode)
   puts "Running in test mode\n" unless mode == "run"
 
   ActiveRecord::Base.transaction do
-  def set_false_tags(library_and_tag_hash)
-    ActiveRecord::Base.transaction do
-      # puts "#{library_and_tag_hash.inspect}\n\n"
+    def set_false_tags(lib_aliquots, false_tag_hash)
       lib_tags = []
-      library_and_tag_hash.each do |library,tag|
-        aliquots = Aliquot.find_all_by_library_id(library)
-        lib_tags.push(aliquots.first.tag)
-          aliquots.each do |aliquot|   
+      c = false_tag_hash.size
+      false_tag_hash.each do |library,tag|
+        aliquots = Asset.find(library).aliquots.first.sample.aliquots
+        aliquots.each do |aliquot|
+          if aliquot.tag_id != -1
+            lib_tags.push(aliquot.tag)
             aliquot.tag_id = tag
             aliquot.save!
-            # puts "#{aliquot.inspect}\n"
-            puts "Aliquot: #{aliquot.id} => Sample: #{aliquot.sample.name} => old tag: #{lib_tags.last.map_id} => new tag: #{tag}"
+            lib_aliquots << aliquot
+            puts "#{c} >> Aliquot: #{aliquot.id} => Sample: #{aliquot.sample.name} => old tag: #{lib_tags.last.map_id} => new tag: #{aliquot.tag.map_id}"
           end
+        end
+        c -=1
       end
+      return lib_aliquots
     end
-  end
   
-  def change_tags(libraries, sample_tag_hash, tag_group)
-    ActiveRecord::Base.transaction do
-      lib_tags = []
-      libraries.each do |library|
-        aliquots = Aliquot.find_all_by_library_id(library)
-          aliquots.each do |aliquot|   
-            aliquot.tag_id = TagGroup.find(tag_group).tags.select {|t| t.map_id == sample_tag_hash[aliquot.sample.name]}.map(&:id).first
-            aliquot.save!
-            puts "Aliquot: #{aliquot.id} => Sample: #{aliquot.sample.name} => new tag: #{aliquot.tag.map_id}"
-          end
-      end
+  def change_tags(lib_aliquots, sample_tag_hash, tag_group)
+    c = lib_aliquots.size
+    lib_aliquots.each do |aliquot|   
+      aliquot.tag_id = TagGroup.find(tag_group).tags.select {|t| t.map_id == sample_tag_hash[aliquot.sample.name]}.map(&:id).first
+      aliquot.save!
+      puts "#{c} >> Aliquot: #{aliquot.id} => Sample: #{aliquot.sample.name} => new tag: #{sample_tag_hash[aliquot.sample.name]}"
+      c -=1
     end
   end
   
   mx = Asset.find(mx_tube)
-
+  lib_aliquots = []
+  
   # find the library id's of the mx_tube
   lib_ids = mx.aliquots.map(&:library_id)
   
@@ -56,10 +55,10 @@ def change_tags_on_batch(tags,tag_group,mx_tube,mode)
   puts "false_tag_hash: #{false_tag_hash.inspect}"
 
   puts "Setting false tags on libraries"
-  set_false_tags(false_tag_hash)
+  set_false_tags(lib_aliquots, false_tag_hash)
 
   puts "Assigning new tags"
-  change_tags(lib_ids,sample_tag_hash,tag_group)
+  change_tags(lib_aliquots,sample_tag_hash,tag_group)
 
   raise "TESTING *********" unless mode == "run"
   end
