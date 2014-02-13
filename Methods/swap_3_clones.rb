@@ -1,4 +1,4 @@
-def swap_clones(sample_names,temp_asset_id,mode)
+def swap_3_clones(sample_names,temp_asset_id,mode)
   ActiveRecord::Base.transaction do
     sample_A = Sample.find_by_name(sample_names[0])
     sample_B = Sample.find_by_name(sample_names[1])
