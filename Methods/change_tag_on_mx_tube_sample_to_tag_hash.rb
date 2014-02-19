@@ -24,7 +24,7 @@ def change_tags_on_batch(sample_tag_hash,tag_group,mx_tube,mode)
   
   def change_tags(lib_aliquots, sample_tag_hash, tag_group)
     c = lib_aliquots.size
-    lib_aliquots.each do |aliquot|   
+    lib_aliquots.each do |aliquot|
       aliquot.tag_id = TagGroup.find(tag_group).tags.select {|t| t.map_id == sample_tag_hash[aliquot.sample.name]}.map(&:id).first
       aliquot.save!
       puts "#{c} >> Aliquot: #{aliquot.id} => Sample: #{aliquot.sample.name} => new tag: #{sample_tag_hash[aliquot.sample.name]}"
@@ -62,3 +62,14 @@ def change_tags_on_batch(sample_tag_hash,tag_group,mx_tube,mode)
   raise "TESTING *********" unless mode == "run"
   end
 end
+
+# eg
+# sample_tag_hash = {
+# "sample1" => 72,
+# "sample2" => 55,
+# "sample3" => 61
+# }
+# mx_tube = 123456789
+# tag_group = 20
+# mode = 'test'
+# change_tags_on_batch(sample_tag_hash,tag_group,mx_tube,mode)
