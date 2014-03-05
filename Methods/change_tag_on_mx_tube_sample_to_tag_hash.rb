@@ -69,7 +69,4 @@ end
 # "sample2" => 55,
 # "sample3" => 61
 # }
-# mx_tube = 123456789
-# tag_group = 20
-# mode = 'test'
-# change_tags_on_batch(sample_tag_hash,tag_group,mx_tube,mode)
+
