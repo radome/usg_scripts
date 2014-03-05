@@ -7,7 +7,7 @@ def change_tags_on_batch(sample_tag_hash,tag_group,mx_tube,mode)
     lib_tags = []
     c = false_tag_hash.size
     false_tag_hash.each do |library,tag|
-      aliquots = Asset.find(library).aliquots.first.sample.aliquots
+      aliquots = Aliquot.find_all_by_library_id(library)
       aliquots.each do |aliquot|
         if aliquot.tag_id != -1
           lib_tags.push(aliquot.tag)
