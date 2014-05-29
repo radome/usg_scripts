@@ -1,4 +1,5 @@
-def change_tags_on_batch(sample_tag_hash,tag_group,mx_tube,mode)
+def change_tags_on_batch(sample_tag_hash,tag_group,mx_tube,mode,rt_ticket,login)
+  version = "change_tag_on_mx_tube_sample_to_tag_hash.rb version 2.0"
   puts "Supply: sample_tag_hash (sample_name => map_id), tag_group (id), mx_tube (id), mode ('test'/'run')\n"
   puts "Running in test mode\n" unless mode == "run"
 
@@ -24,6 +25,11 @@ def change_tags_on_batch(sample_tag_hash,tag_group,mx_tube,mode)
   
   def change_tags(lib_aliquots, sample_tag_hash, tag_group)
     c = lib_aliquots.size
+    lib_aliquots.map(&:library).uniq.each do |lib|
+      comment_text = "#{user.login} changed tag from tag_group #{lib.aliquots.first.tag.tag_group.id} - tag #{lib.aliquots.first.tag.map_id} => tag_group #{tag_group} - tag #{sample_tag_hash[lib.aliquots.first.sample.name]} requested via RT ticket #{rt_ticket} using #{version}"
+      comment_on = lambda { |x| x.comments.create!(:description => comment_text, :user_id => user.id, :title => "Tag change #{rt_ticket}") }     
+      comment_on.call(lib)
+    end
     lib_aliquots.each do |aliquot|
       aliquot.tag_id = TagGroup.find(tag_group).tags.select {|t| t.map_id == sample_tag_hash[aliquot.sample.name]}.map(&:id).first
       aliquot.save!
@@ -32,6 +38,7 @@ def change_tags_on_batch(sample_tag_hash,tag_group,mx_tube,mode)
     end
   end
   
+  user = User.find_by_login login
   mx = Asset.find(mx_tube)
   lib_aliquots = []
   
