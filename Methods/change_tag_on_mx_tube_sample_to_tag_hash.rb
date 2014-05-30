@@ -23,7 +23,7 @@ def change_tags_on_batch(sample_tag_hash,tag_group,mx_tube,mode,rt_ticket,login)
     return lib_aliquots
   end
   
-  def change_tags(lib_aliquots, sample_tag_hash, tag_group)
+  def change_tags(mx, lib_aliquots, sample_tag_hash, tag_group)
     c = lib_aliquots.size
     lib_aliquots.map(&:library).uniq.each do |lib|
       comment_text = "#{user.login} changed tag from tag_group #{lib.aliquots.first.tag.tag_group.id} - tag #{lib.aliquots.first.tag.map_id} => tag_group #{tag_group} - tag #{sample_tag_hash[lib.aliquots.first.sample.name]} requested via RT ticket #{rt_ticket} using #{version}"
@@ -36,6 +36,9 @@ def change_tags_on_batch(sample_tag_hash,tag_group,mx_tube,mode,rt_ticket,login)
       puts "#{c} >> Aliquot: #{aliquot.id} => Sample: #{aliquot.sample.name} => new tag: #{sample_tag_hash[aliquot.sample.name]}"
       c -=1
     end
+    comment_text = "MX tube tags updated via RT#{rt_ticket}"
+    comment_on = lambda { |x| x.comments.create!(:description => comment_text, :user_id => user.id, :title => "Tag change #{rt_ticket}") }
+    comment_on.call(mx)
   end
   
   user = User.find_by_login login
@@ -64,7 +67,7 @@ def change_tags_on_batch(sample_tag_hash,tag_group,mx_tube,mode,rt_ticket,login)
   set_false_tags(lib_aliquots, false_tag_hash)
 
   puts "Assigning new tags"
-  change_tags(lib_aliquots, sample_tag_hash, tag_group)
+  change_tags(mx, lib_aliquots, sample_tag_hash, tag_group)
 
   raise "TESTING *********" unless mode == "run"
   end
