@@ -1,14 +1,16 @@
-def change_bait_library(submissions,bait_id,mode)
+def change_bait_library(mx_id,bait_id,mode)
   ActiveRecord::Base.transaction do
-    submissions.each do |sub|
-      submission  = Submission.find(sub)
-      # order.request_options.hash <= look!
-      bait_lib    = BaitLibrary.find(bait_id)
-      request_ids = submission.requests.map(&:id)
-      request_ids.each do |r|
-        request = Request.find(r)
-        request.request_metadata.bait_library = bait_lib unless request.request_type_id != submission.order
-        request.request_metadata.save!
+    bait_lib = BaitLibrary.find(bait_id)
+    mx = Asset.find(mx_id)
+    mx.aliquots.map {|a| a.bait_library_id = bait_lib.id; a.save!}
+    mx.children.map(&:aliquots).flatten.map {|a| a.bait_library_id = bait_lib.id; a.save!}
+    mx.requests_as_source.map(&:submission).each do |submission|
+      submission.orders.each do |order|
+        order.request_options[:bait_library_name] = bait_lib.name
+        order.save!
+      end
+      submission.requests.each do |request|
+        request.request_metadata.update_attributes!(:bait_library => bait_lib) if request.request_type_id == submission.order.request_types[0]
       end
     end
     raise "Testing" unless mode == "run"
