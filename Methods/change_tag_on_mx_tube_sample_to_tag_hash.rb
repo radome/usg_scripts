@@ -1,5 +1,4 @@
-def change_tags_on_batch(sample_tag_hash,tag_group,mx_tube,mode,rt_ticket,login)
-  version = "change_tag_on_mx_tube_sample_to_tag_hash.rb version 2.0"
+def change_tags_on_batch(sample_tag_hash,tag_group,mx_tube,login,rt_ticket,mode)
   puts "Supply: sample_tag_hash (sample_name => map_id), tag_group (id), mx_tube (id), mode ('test'/'run')\n"
   puts "Running in test mode\n" unless mode == "run"
 
@@ -23,8 +22,9 @@ def change_tags_on_batch(sample_tag_hash,tag_group,mx_tube,mode,rt_ticket,login)
     return lib_aliquots
   end
   
-  def change_tags(mx, lib_aliquots, sample_tag_hash, tag_group)
+  def change_tags(mx, lib_aliquots, sample_tag_hash, tag_group, user, rt_ticket)
     c = lib_aliquots.size
+    version = "change_tags_on_batch_with_hash v 1.1"
     lib_aliquots.map(&:library).uniq.each do |lib|
       comment_text = "#{user.login} changed tag from tag_group #{lib.aliquots.first.tag.tag_group.id} - tag #{lib.aliquots.first.tag.map_id} => tag_group #{tag_group} - tag #{sample_tag_hash[lib.aliquots.first.sample.name]} requested via RT ticket #{rt_ticket} using #{version}"
       comment_on = lambda { |x| x.comments.create!(:description => comment_text, :user_id => user.id, :title => "Tag change #{rt_ticket}") }     
@@ -41,13 +41,12 @@ def change_tags_on_batch(sample_tag_hash,tag_group,mx_tube,mode,rt_ticket,login)
     comment_on.call(mx)
   end
   
-  user = User.find_by_login login
   mx = Asset.find(mx_tube)
   lib_aliquots = []
   
   # find the library id's of the mx_tube
   lib_ids = mx.aliquots.map(&:library_id)
-  
+  user = User.find_by_login login
   samples = mx.aliquots.map(&:sample).flatten.map(&:name)
   keys = sample_tag_hash.keys; nil
   problems = samples - keys
@@ -67,7 +66,7 @@ def change_tags_on_batch(sample_tag_hash,tag_group,mx_tube,mode,rt_ticket,login)
   set_false_tags(lib_aliquots, false_tag_hash)
 
   puts "Assigning new tags"
-  change_tags(mx, lib_aliquots, sample_tag_hash, tag_group)
+  change_tags(mx, lib_aliquots, sample_tag_hash, tag_group, user, rt_ticket)
 
   raise "TESTING *********" unless mode == "run"
   end
@@ -79,4 +78,7 @@ end
 # "sample2" => 55,
 # "sample3" => 61
 # }
-
+# mx_tube = 123456789
+# tag_group = 20
+# mode = 'test'
+change_tags_on_batch(sample_tag_hash,tag_group,mx_tube,login,rt_ticket,mode)
