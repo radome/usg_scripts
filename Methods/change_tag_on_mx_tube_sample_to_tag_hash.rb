@@ -1,32 +1,30 @@
-def change_tags_on_batch(tags,tag_group,mx_tube,mode,rt_ticket,login)
-  version = "change_tag_on_mx_tube_std_order.rb version 2.0"
-  puts "Supply: tags (in correct order i.e [1,2,4,8,3,5,6,7], tag_group (id), mx_tube (id), mode ('test'/'run')\n"
+def change_tags_on_batch(sample_tag_hash,tag_group,mx_tube,login,rt_ticket,mode)
+  puts "Supply: sample_tag_hash (sample_name => map_id), tag_group (id), mx_tube (id), mode ('test'/'run')\n"
   puts "Running in test mode\n" unless mode == "run"
-  
+
   ActiveRecord::Base.transaction do
   def set_false_tags(lib_aliquots, false_tag_hash)
-    ActiveRecord::Base.transaction do
-      lib_tags = []
-      c = false_tag_hash.size
-      false_tag_hash.each do |library,tag|
-        # aliquots = Asset.find(library).aliquots.first.sample.aliquots
-        aliquots = Aliquot.find_all_by_library_id(library)
-        aliquots.each do |aliquot|
-          if aliquot.tag_id != -1
-            lib_tags.push(aliquot.tag)
-            aliquot.tag_id = tag
-            aliquot.save!
-            lib_aliquots << aliquot
-            puts "#{c} >> Aliquot: #{aliquot.id} => Sample: #{aliquot.sample.name} => old tag: #{lib_tags.last.map_id} => new tag: #{aliquot.tag.map_id}"
-          end
+    lib_tags = []
+    c = false_tag_hash.size
+    false_tag_hash.each do |library,tag|
+      aliquots = Aliquot.find_all_by_library_id(library)
+      aliquots.each do |aliquot|
+        if aliquot.tag_id != -1
+          lib_tags.push(aliquot.tag)
+          aliquot.tag_id = tag
+          aliquot.save!
+          lib_aliquots << aliquot
+          puts "#{c} >> Aliquot: #{aliquot.id} => Sample: #{aliquot.sample.name} => old tag: #{lib_tags.last.map_id} => new tag: #{aliquot.tag.map_id}"
         end
-      c -=1
       end
+      c -=1
     end
+    return lib_aliquots
   end
   
-  def change_tags(mx, lib_aliquots, sample_tag_hash, tag_group, rt_ticket, user, version)
+  def change_tags(mx, lib_aliquots, sample_tag_hash, tag_group, user, rt_ticket)
     c = lib_aliquots.size
+    version = "change_tags_on_batch_with_hash v 1.1"
     lib_aliquots.map(&:library).uniq.each do |lib|
       comment_text = "#{user.login} changed tag from tag_group #{lib.aliquots.first.tag.tag_group.id} - tag #{lib.aliquots.first.tag.map_id} => tag_group #{tag_group} - tag #{sample_tag_hash[lib.aliquots.first.sample.name]} requested via RT ticket #{rt_ticket} using #{version}"
       comment_on = lambda { |x| x.comments.create!(:description => comment_text, :user_id => user.id, :title => "Tag change #{rt_ticket}") }     
@@ -40,20 +38,25 @@ def change_tags_on_batch(tags,tag_group,mx_tube,mode,rt_ticket,login)
     end
     comment_text = "MX tube tags updated via RT#{rt_ticket}"
     comment_on = lambda { |x| x.comments.create!(:description => comment_text, :user_id => user.id, :title => "Tag change #{rt_ticket}") }
-    comment_on.call(mx)  
+    comment_on.call(mx)
   end
   
-  user = User.find_by_login login
   mx = Asset.find(mx_tube)
   lib_aliquots = []
-
+  
   # find the library id's of the mx_tube
   lib_ids = mx.aliquots.map(&:library_id)
-  
+  user = User.find_by_login login
   samples = mx.aliquots.map(&:sample).flatten.map(&:name)
+  keys = sample_tag_hash.keys; nil
+  problems = samples - keys
+  if problems.empty?
+    puts "Hash and mx.aliquots match. Proceeding..."
+  else
+    puts "Problems...\n#{problems.inspect}\n"
+    raise "hash keys and mx samples do not match"
+  end
   
-  sample_tag_hash = Hash[samples.zip(tags)]
-
   false_tag_hash = Hash[lib_ids.zip((1..sample_tag_hash.size).entries)]
   
   puts "sample_tag_hash: #{sample_tag_hash.inspect}\n\n"
@@ -63,8 +66,19 @@ def change_tags_on_batch(tags,tag_group,mx_tube,mode,rt_ticket,login)
   set_false_tags(lib_aliquots, false_tag_hash)
 
   puts "Assigning new tags"
-  change_tags(mx,lib_aliquots,sample_tag_hash,tag_group,rt_ticket,user,version)
+  change_tags(mx, lib_aliquots, sample_tag_hash, tag_group, user, rt_ticket)
 
   raise "TESTING *********" unless mode == "run"
   end
 end
+
+# eg
+# sample_tag_hash = {
+# "sample1" => 72,
+# "sample2" => 55,
+# "sample3" => 61
+# }
+# mx_tube = 123456789
+# tag_group = 20
+# mode = 'test'
+change_tags_on_batch(sample_tag_hash,tag_group,mx_tube,login,rt_ticket,mode)
