@@ -40,4 +40,3 @@ def cancel_submission(subs,rt_ticket,login,mode)
     raise "Hell!!" unless mode == "run"
   end; nil
 end
-
