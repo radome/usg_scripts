@@ -40,8 +40,4 @@ def cancel_submission(subs,rt_ticket,login,mode)
     raise "Hell!!" unless mode == "run"
   end; nil
 end
-rt_ticket = 416118
-login = 'nts'
-mode = 'test'
-subs = ["1_6740_3135_08072014"]
-cancel_submission(subs,rt_ticket,login,mode)
+
