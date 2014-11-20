@@ -1,4 +1,4 @@
-def change_tags_on_batch(tags,tag_group,mx_tube,mode,rt_ticket,login)
+def change_tags_on_mx(tags,tag_group,mx_tube,mode,rt_ticket,login)
   version = "change_tag_on_mx_tube_std_order.rb version 2.0"
   puts "Supply: tags (in correct order i.e [1,2,4,8,3,5,6,7], tag_group (id), mx_tube (id), mode ('test'/'run')\n"
   puts "Running in test mode\n" unless mode == "run"
@@ -12,12 +12,15 @@ def change_tags_on_batch(tags,tag_group,mx_tube,mode,rt_ticket,login)
         # aliquots = Asset.find(library).aliquots.first.sample.aliquots
         aliquots = Aliquot.find_all_by_library_id(library)
         aliquots.each do |aliquot|
-          if aliquot.tag_id != -1
+          if aliquot.receptacle.class == QcTube 
+            puts "Ignoring QcTube"
+          elsif
+            aliquot.tag_id != -1
             lib_tags.push(aliquot.tag)
             aliquot.tag_id = tag
             aliquot.save!
             lib_aliquots << aliquot
-            puts "#{c} >> Aliquot: #{aliquot.id} => Sample: #{aliquot.sample.name} => old tag: #{lib_tags.last.map_id} => new tag: #{aliquot.tag.map_id}"
+            puts "#{c} >> #{aliquot.receptacle.class.name} aliquot: #{aliquot.id} => Sample: #{aliquot.sample.name} => old tag: #{lib_tags.last.map_id} => new tag: #{aliquot.tag.map_id}"
           end
         end
       c -=1
@@ -33,9 +36,10 @@ def change_tags_on_batch(tags,tag_group,mx_tube,mode,rt_ticket,login)
       comment_on.call(lib)
     end
     lib_aliquots.each do |aliquot|
+      puts "#{c} >> #{aliquot.receptacle.class.name} aliquot: #{aliquot.id} => Sample: #{aliquot.sample.name} => new tag: #{sample_tag_hash[aliquot.sample.name]}"
       aliquot.tag_id = TagGroup.find(tag_group).tags.select {|t| t.map_id == sample_tag_hash[aliquot.sample.name]}.map(&:id).first
-      aliquot.save!
-      puts "#{c} >> Aliquot: #{aliquot.id} => Sample: #{aliquot.sample.name} => new tag: #{sample_tag_hash[aliquot.sample.name]}"
+      puts "Ignoring QcTube"
+      aliquot.save! 
       c -=1
     end
     comment_text = "MX tube tags updated via RT#{rt_ticket}"
