@@ -38,8 +38,6 @@ def change_tags_on_mx(tags,tag_group,mx_tube,mode,rt_ticket,login)
     lib_aliquots.each do |aliquot|
       puts "#{c} >> #{aliquot.receptacle.class.name} aliquot: #{aliquot.id} => Sample: #{aliquot.sample.name} => new tag: #{sample_tag_hash[aliquot.sample.name]}"
       aliquot.tag_id = TagGroup.find(tag_group).tags.select {|t| t.map_id == sample_tag_hash[aliquot.sample.name]}.map(&:id).first
-      puts "Ignoring QcTube"
-      aliquot.save! 
       c -=1
     end
     comment_text = "MX tube tags updated via RT#{rt_ticket}"
