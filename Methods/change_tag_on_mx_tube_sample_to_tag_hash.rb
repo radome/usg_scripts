@@ -9,12 +9,15 @@ def change_tags_on_batch(sample_tag_hash,tag_group,mx_tube,login,rt_ticket,mode)
     false_tag_hash.each do |library,tag|
       aliquots = Aliquot.find_all_by_library_id(library)
       aliquots.each do |aliquot|
-        if aliquot.tag_id != -1
+        if aliquot.receptacle.class == QcTube 
+          puts "Ignoring QcTube"
+        elsif
+          aliquot.tag_id != -1
           lib_tags.push(aliquot.tag)
           aliquot.tag_id = tag
           aliquot.save!
           lib_aliquots << aliquot
-          puts "#{c} >> Aliquot: #{aliquot.id} => Sample: #{aliquot.sample.name} => old tag: #{lib_tags.last.map_id} => new tag: #{aliquot.tag.map_id}"
+          puts "#{c} >> #{aliquot.receptacle.class.name} aliquot: #{aliquot.id} => Sample: #{aliquot.sample.name} => old tag: #{lib_tags.last.map_id} => new tag: #{aliquot.tag.map_id}"
         end
       end
       c -=1
@@ -33,7 +36,7 @@ def change_tags_on_batch(sample_tag_hash,tag_group,mx_tube,login,rt_ticket,mode)
     lib_aliquots.each do |aliquot|
       aliquot.tag_id = TagGroup.find(tag_group).tags.select {|t| t.map_id == sample_tag_hash[aliquot.sample.name]}.map(&:id).first
       aliquot.save!
-      puts "#{c} >> Aliquot: #{aliquot.id} => Sample: #{aliquot.sample.name} => new tag: #{sample_tag_hash[aliquot.sample.name]}"
+      puts "#{c} >> #{aliquot.receptacle.class.name} aliquot: #{aliquot.id} => Sample: #{aliquot.sample.name} => new tag: #{sample_tag_hash[aliquot.sample.name]}"
       c -=1
     end
     comment_text = "MX tube tags updated via RT#{rt_ticket}"
@@ -71,14 +74,3 @@ def change_tags_on_batch(sample_tag_hash,tag_group,mx_tube,login,rt_ticket,mode)
   raise "TESTING *********" unless mode == "run"
   end
 end
-
-# eg
-# sample_tag_hash = {
-# "sample1" => 72,
-# "sample2" => 55,
-# "sample3" => 61
-# }
-# mx_tube = 123456789
-# tag_group = 20
-# mode = 'test'
-change_tags_on_batch(sample_tag_hash,tag_group,mx_tube,login,rt_ticket,mode)
