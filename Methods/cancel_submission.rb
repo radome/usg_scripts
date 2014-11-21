@@ -4,6 +4,7 @@ def cancel_submission(subs,rt_ticket,login,mode)
     odd_classes = ["IlluminaHtp::Requests::CherrypickedToShear","IlluminaHtp::Requests::PostShearToAlLibs","IlluminaHtp::Requests::PrePcrToPcr","IlluminaHtp::Requests::PcrXpToPool","CherrypickForPulldownRequest"]
     subs.each do |submission_name|
       submission = Submission.find_by_id submission_name
+      # submission = Submission.find_by_name submission_name
       requests = submission.requests
       requests.each do |r|
         puts "#{r.inspect}"
