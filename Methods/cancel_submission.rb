@@ -1,9 +1,9 @@
 def cancel_submission(subs,rt_ticket,login,mode)
   ActiveRecord::Base.transaction do
     comment = "#{Time.now}: Submission cancelled by #{login} via RT ticket #{rt_ticket}"
-    odd_classes = ["IlluminaHtp::Requests::CherrypickedToShear","IlluminaHtp::Requests::PostShearToAlLibs","IlluminaHtp::Requests::PrePcrToPcr","IlluminaHtp::Requests::PcrXpToPool"]
+    odd_classes = ["IlluminaHtp::Requests::CherrypickedToShear","IlluminaHtp::Requests::PostShearToAlLibs","IlluminaHtp::Requests::PrePcrToPcr","IlluminaHtp::Requests::PcrXpToPool","CherrypickForPulldownRequest"]
     subs.each do |submission_name|
-      submission = Submission.find_by_name submission_name
+      submission = Submission.find_by_id submission_name
       requests = submission.requests
       requests.each do |r|
         puts "#{r.inspect}"
@@ -27,15 +27,16 @@ def cancel_submission(subs,rt_ticket,login,mode)
           else
             puts "#{submission.id} request #{r.id} #{r.sti_type} was #{status} now => #{r.state}"
           end
-          # r.destroy
         end
       end
+
       puts "#{Submission.find(submission.id).requests.map(&:state).uniq.inspect}"
-    end
-    submission.orders.each do |o|
-      puts "#{comment}"
-      o.comments = comment
-      o.save!
+
+      submission.orders.each do |o|
+        puts "#{comment}"
+        o.comments = comment
+        o.save!
+      end
     end
     raise "Hell!!" unless mode == "run"
   end; nil
