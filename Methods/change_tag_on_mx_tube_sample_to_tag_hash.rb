@@ -17,7 +17,7 @@ def change_tags_on_batch(sample_tag_hash,tag_group,mx_tube,login,rt_ticket,mode)
           aliquot.tag_id = tag
           aliquot.save!
           lib_aliquots << aliquot
-          puts "#{c} >> #{aliquot.receptacle.class.name} aliquot: #{aliquot.id} => Sample: #{aliquot.sample.name} => old tag: #{lib_tags.last.map_id} => new tag: #{aliquot.tag.map_id}"
+          puts "#{c} >> #{aliquot.receptacle.class.name} aliquot: #{aliquot.id} => Sample: #{aliquot.sample.name} => old tag: #{lib_tags.last.map_id}(#{lib_tags.last.id}) => new tag: #{aliquot.tag.map_id}(#{aliquot.tag_id})"
         end
       end
       c -=1
@@ -28,17 +28,18 @@ def change_tags_on_batch(sample_tag_hash,tag_group,mx_tube,login,rt_ticket,mode)
   def change_tags(mx, lib_aliquots, sample_tag_hash, tag_group, user, rt_ticket)
     c = lib_aliquots.size
     version = "change_tags_on_batch_with_hash v 1.1"
-    lib_aliquots.map(&:library).uniq.each do |lib|
-      comment_text = "#{user.login} changed tag from tag_group #{lib.aliquots.first.tag.tag_group.id} - tag #{lib.aliquots.first.tag.map_id} => tag_group #{tag_group} - tag #{sample_tag_hash[lib.aliquots.first.sample.name]} requested via RT ticket #{rt_ticket} using #{version}"
-      comment_on = lambda { |x| x.comments.create!(:description => comment_text, :user_id => user.id, :title => "Tag change #{rt_ticket}") }     
-      comment_on.call(lib)
-    end
     lib_aliquots.each do |aliquot|
       aliquot.tag_id = TagGroup.find(tag_group).tags.select {|t| t.map_id == sample_tag_hash[aliquot.sample.name]}.map(&:id).first
       aliquot.save!
       puts "#{c} >> #{aliquot.receptacle.class.name} aliquot: #{aliquot.id} => Sample: #{aliquot.sample.name} => new tag: #{sample_tag_hash[aliquot.sample.name]}"
       c -=1
     end
+    lib_aliquots.map(&:library).uniq.each do |lib|
+      comment_text = "#{user.login} changed tag from tag_group #{lib.aliquots.first.tag.tag_group.id} - tag #{lib.aliquots.first.tag.map_id} => tag_group #{tag_group} - tag #{sample_tag_hash[lib.aliquots.first.sample.name]} requested via RT ticket #{rt_ticket} using #{version}"
+      comment_on = lambda { |x| x.comments.create!(:description => comment_text, :user_id => user.id, :title => "Tag change #{rt_ticket}") }     
+      comment_on.call(lib)
+    end
+    
     comment_text = "MX tube tags updated via RT#{rt_ticket}"
     comment_on = lambda { |x| x.comments.create!(:description => comment_text, :user_id => user.id, :title => "Tag change #{rt_ticket}") }
     comment_on.call(mx)
