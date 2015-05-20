@@ -4,7 +4,9 @@ def cancel_submission(subs,rt_ticket,login,mode)
     odd_classes = ["IlluminaHtp::Requests::CherrypickedToShear","IlluminaHtp::Requests::PostShearToAlLibs","IlluminaHtp::Requests::PrePcrToPcr","IlluminaHtp::Requests::PcrXpToPool","CherrypickForPulldownRequest"]
     subs.each do |submission_name|
       submission = Submission.find_by_id submission_name
-      # submission = Submission.find_by_name submission_name
+      submission = Submission.find_by_name submission_name unless submission != nil
+      submission.name = submission.name+"_failed_RT#{rt_ticket}_1"
+      submission.save!
       requests = submission.requests
       requests.each do |r|
         puts "#{r.inspect}"
@@ -30,7 +32,10 @@ def cancel_submission(subs,rt_ticket,login,mode)
           end
         end
       end
-
+      puts "Finding SharedLibraryPrep and PcrLibraryRequest requests and deleting.... "
+      reqs = submission.requests.select {|r| r.class == IlluminaHtp::Requests::SharedLibraryPrep || r.class == IlluminaC::Requests::PcrLibraryRequest}
+      reqs.map(&:delete) unless reqs.empty?
+      
       puts "#{Submission.find(submission.id).requests.map(&:state).uniq.inspect}"
 
       submission.orders.each do |o|
