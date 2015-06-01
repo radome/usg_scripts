@@ -1,4 +1,4 @@
-def change_tag_group_on_mx(tag_group,mx_tube,mode,rt_ticket,login)
+def change_tag_group_on_mx(tag_group,mx_tubes,mode,rt_ticket,login)
   version = "change_tag_group_on_mx_tube_std_order.rb version 2.1"
   puts "Supply: tag_group (id), mx_tube (id), mode ('test'/'run'), rt_ticket, login\n"
   puts "Running in test mode\n" unless mode == "run"
@@ -45,40 +45,42 @@ def change_tag_group_on_mx(tag_group,mx_tube,mode,rt_ticket,login)
       comment_on = lambda { |x| x.comments.create!(:description => comment_text, :user_id => user.id, :title => "Tag change #{rt_ticket}") }
       comment_on.call(mx)
     end
-  
-    mx = Asset.find(mx_tube)
-    tags = mx.aliquots.map(&:tag).map(&:map_id)
-    lib_aliquots = []
+    
+    mx_tubes.each do |mx_tube|
+      mx = Asset.find(mx_tube)
+      tags = mx.aliquots.map(&:tag).map(&:map_id)
+      lib_aliquots = []
 
-    # find the library id's of the mx_tube
-    lib_ids = mx.aliquots.map(&:library_id); nil
-    user = User.find_by_login login
-    samples = mx.aliquots.map(&:sample).flatten.map(&:name)
+      # find the library id's of the mx_tube
+      lib_ids = mx.aliquots.map(&:library_id); nil
+      user = User.find_by_login login
+      samples = mx.aliquots.map(&:sample).flatten.map(&:name)
   
-    sample_tag_hash = Hash[samples.zip(tags)]
-    keys = sample_tag_hash.keys; nil
-    problems = samples - keys
-    if problems.empty?
-      puts "Hash and mx.aliquots match. Proceeding..."
-    else
-      puts "Problems...\n#{problems.inspect}\n"
-      raise "hash keys and mx samples do not match"
+      sample_tag_hash = Hash[samples.zip(tags)]
+      keys = sample_tag_hash.keys; nil
+      problems = samples - keys
+      if problems.empty?
+        puts "Hash and mx.aliquots match. Proceeding..."
+      else
+        puts "Problems...\n#{problems.inspect}\n"
+        raise "hash keys and mx samples do not match"
+      end
+  
+
+      false_tag_hash = Hash[lib_ids.zip((1..sample_tag_hash.size).entries)]
+  
+      puts "sample_tag_hash: #{sample_tag_hash.inspect}\n\n"
+      puts "false_tag_hash: #{false_tag_hash.inspect}"
+
+      puts "Setting false tags on libraries"
+      set_false_tags(lib_aliquots, false_tag_hash)
+
+      puts "Assigning new tags"
+      change_tags(mx,lib_aliquots,sample_tag_hash,tag_group,rt_ticket,user,version)
     end
-  
-
-    false_tag_hash = Hash[lib_ids.zip((1..sample_tag_hash.size).entries)]
-  
-    puts "sample_tag_hash: #{sample_tag_hash.inspect}\n\n"
-    puts "false_tag_hash: #{false_tag_hash.inspect}"
-
-    puts "Setting false tags on libraries"
-    set_false_tags(lib_aliquots, false_tag_hash)
-
-    puts "Assigning new tags"
-    change_tags(mx,lib_aliquots,sample_tag_hash,tag_group,rt_ticket,user,version)
 
     raise "TESTING *********" unless mode == "run"
   end
 end
 
-change_tag_group_on_mx(tag_group,mx_tube,mode,rt_ticket,login)
+change_tag_group_on_mx(tag_group,mx_tubes,mode,rt_ticket,login)
