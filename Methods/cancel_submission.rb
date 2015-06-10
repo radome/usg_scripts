@@ -1,7 +1,7 @@
 def cancel_submission(subs,rt_ticket,login,mode)
   ActiveRecord::Base.transaction do
     comment = "#{Time.now}: Submission cancelled by #{login} via RT ticket #{rt_ticket}"
-    odd_classes = ["IlluminaHtp::Requests::CherrypickedToShear","IlluminaHtp::Requests::PostShearToAlLibs","IlluminaHtp::Requests::PrePcrToPcr","IlluminaHtp::Requests::PcrXpToPool","CherrypickForPulldownRequest"]
+    odd_classes = ["IlluminaHtp::Requests::CherrypickedToShear","IlluminaHtp::Requests::PostShearToAlLibs","IlluminaHtp::Requests::PrePcrToPcr","IlluminaHtp::Requests::PcrXpToPool","CherrypickForPulldownRequest","IlluminaHtp::Requests::CovarisToSheared"]
     subs.each do |submission_name|
       submission = Submission.find_by_id submission_name
       submission = Submission.find_by_name submission_name unless submission != nil
@@ -33,7 +33,7 @@ def cancel_submission(subs,rt_ticket,login,mode)
         end
       end
       puts "Finding SharedLibraryPrep and PcrLibraryRequest requests and deleting.... "
-      reqs = submission.requests.select {|r| r.class == IlluminaHtp::Requests::SharedLibraryPrep || r.class == IlluminaC::Requests::PcrLibraryRequest}
+      reqs = submission.requests.select {|r| r.class == IlluminaHtp::Requests::SharedLibraryPrep || r.class == IlluminaC::Requests::PcrLibraryRequest || r.class == IlluminaHtp::Requests::CherrypickedToShear}
       reqs.map(&:delete) unless reqs.empty?
       
       puts "#{Submission.find(submission.id).requests.map(&:state).uniq.inspect}"
@@ -47,3 +47,6 @@ def cancel_submission(subs,rt_ticket,login,mode)
     raise "Hell!!" unless mode == "run"
   end; nil
 end
+
+cancel_submission(subs,rt_ticket,login,mode)
+
