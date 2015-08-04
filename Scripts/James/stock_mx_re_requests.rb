@@ -23,7 +23,7 @@ class StockRepooler
   end
   
   def stock_wells
-    @sw ||= stock_tubes.map(&:stock_wells).flatten.sort_by {|well| w.map.column_order }
+    @sw ||= stock_tubes.map(&:stock_wells).flatten.sort_by {|well| well.map.column_order }
   end
   
   def stock_plate_barcode
