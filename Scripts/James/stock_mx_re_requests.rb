@@ -29,6 +29,10 @@ class StockRepooler
   def stock_plate_barcode
     stock_wells.first.plate.sanger_human_barcode
   end
+  
+  def stock_tube_parents
+    stock_tubes.map(&:parents).flatten.uniq
+  end
 
   def target_name
     @target_name ||= "#{stock_plate_barcode} #{stock_wells.first.map_description}:#{stock_wells.last.map_description}R"
@@ -39,8 +43,8 @@ class StockRepooler
       target = target_purpose.create!(:name=>target_name, :qc_state=>"pending")
       stock_tubes.each do |stock_tube|
         Transfer::BetweenSpecificTubes.create!(:source=>stock_tube,:destination=>target,:user=>user)
-        target.parents << stock_tube.parents
       end
+      target.parents << stock_tube_parents
       puts "Created! #{target.name}, #{target.id}, #{target.ean13_barcode}, #{target.sanger_human_barcode}"
       target.comments.create!(:title=>'Partial Re-request',:description=>"Created by stock_mx_requests.rb #{VERSION}",:user=>user)
     end
