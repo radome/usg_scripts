@@ -3,31 +3,44 @@
 
 class StockRepooler
 
-  VERSION = 'v1.0.0'
+  VERSION = 'v1.1.0'
+  
+  # VERSION 1.0.0: Initial release
+  # VERSION 1.1.0: Add support for multiple parent stock tubes
 
   class PooledWellsError < StandardError; end
   class WellCountError   < StandardError; end
 
-  attr_reader :stock_tube, :user
+  attr_reader :stock_tubes, :user
 
-  def initialize(stock_tube,user_login)
-    @stock_tube = stock_tube
+  def initialize(stock_tubes,user_login)
+    @stock_tubes = stock_tubes
     @user = User.find_by_login!(user_login)
   end
 
   def target_purpose
-    @target_purpose ||= @stock_tube.purpose.child_purposes.first
+    @target_purpose ||= @stock_tubes.first.purpose.child_purposes.first
+  end
+  
+  def stock_wells
+    @sw ||= stock_tubes.map(&:stock_wells).flatten.sort_by {|well| w.map.column_order }
+  end
+  
+  def stock_plate_barcode
+    stock_wells.first.plate.sanger_human_barcode
   end
 
   def target_name
-    @target_name ||= "#{stock_tube.name} repeat"
+    @target_name ||= "#{stock_plate_barcode} #{stock_wells.first.map_description}:#{stock_wells.last.map_description}R"
   end
 
   def repool!
     ActiveRecord::Base.transaction do
       target = target_purpose.create!(:name=>target_name, :qc_state=>"pending")
-      transfer = Transfer::BetweenSpecificTubes.create!(:source=>stock_tube,:destination=>target,:user=>user)
-      target.parents << stock_tube.parents
+      stock_tubes.each do |stock_tube|
+        Transfer::BetweenSpecificTubes.create!(:source=>stock_tube,:destination=>target,:user=>user)
+        target.parents << stock_tube.parents
+      end
       puts "Created! #{target.name}, #{target.id}, #{target.ean13_barcode}, #{target.sanger_human_barcode}"
       target.comments.create!(:title=>'Partial Re-request',:description=>"Created by stock_mx_requests.rb #{VERSION}",:user=>user)
     end
@@ -35,5 +48,5 @@ class StockRepooler
 end
 
 #eg.
-#StockRepooler.new(Asset.find_by_barcode(barcode),'login').repool!
+#StockRepooler.new([Asset.find_by_barcode(barcode)],'login').repool!
 
