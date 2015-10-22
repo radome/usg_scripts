@@ -20,10 +20,11 @@ def move_samples(samples,study_to_move_samples_from,study_to_move_samples_to,use
 
     samples.each do |sample_name|
       study_from, study_to, sample = Study.find(study_to_move_samples_from), Study.find(study_to_move_samples_to), Sample.find_by_name(sample_name)
+      sample = Sample.find_by_id(sample_name) if sample == nil
       comment_text = "Sample #{sample.id} moved from #{study_to_move_samples_from} to #{study_to_move_samples_to} requested via RT ticket #{rt_ticket} using sample_move_command_line_only.rb"
       comment_on = lambda { |x| x.comments.create!(:description => comment_text, :user_id => user.id, :title => "Sample move #{rt_ticket}") }
 
-      puts "Moving sample #{sample.id}"
+      puts "Moving sample #{sample.id} #{sample_name}"
 
       [ sample, study_from, study_to ].map(&comment_on)
 
@@ -41,8 +42,8 @@ def move_samples(samples,study_to_move_samples_from,study_to_move_samples_to,use
           requests.map(&:submission).compact.map(&submissions.method(:<<))
 
           asset.asset_groups.find_each(:conditions => { :study_id => study_to_move_samples_from }) do |asset_group|
-            asset_group.study_id = study_to_move_samples_to
-            asset_group.save!
+            puts "ASSET GROUP >> #{asset_group}"
+            asset_group.update_attributes!(:study_id => study_to_move_samples_to)
           end
         end
       end
@@ -77,7 +78,7 @@ def move_samples(samples,study_to_move_samples_from,study_to_move_samples_to,use
       submission.requests.each do |request|
         if request.target_asset.present? and request.target_asset.aliquots.size == 1
           request.initial_study_id = request.target_asset.primary_aliquot.study_id
-          request.save!
+          request.save(false)
         elsif request.asset.nil?
           puts "\t\tNo assets associated with request: #{request.id} state: #{request.state}"
         else
@@ -150,3 +151,6 @@ def move_samples(samples,study_to_move_samples_from,study_to_move_samples_to,use
     raise "All submissions would have been updated..... BUT you are in TEST MODE" unless mode == "run"
   end
 end
+
+move_samples(samples,study_to_move_samples_from,study_to_move_samples_to,user_login,rt_ticket,mode)
+
