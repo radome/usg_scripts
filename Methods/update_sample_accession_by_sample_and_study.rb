@@ -55,5 +55,3 @@ def update_sample_accession_by_study(sample_names,study_id,login)
     puts "#{sample_error.inspect}\n"
   end; nil
 end
-
-update_sample_accession_by_study(['A8806p'],2589,'nts')
