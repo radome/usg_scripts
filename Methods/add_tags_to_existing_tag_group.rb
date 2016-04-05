@@ -1,4 +1,3 @@
-ls
 def add_tags_to_existing_tag_group(tag_hash,tag_group_id, mode)
   ActiveRecord::Base.transaction do
     tag_group = TagGroup.find_by_id(tag_group_id) or raise "Can't find tag group with is #{tag_group_id}"
