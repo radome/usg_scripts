@@ -32,6 +32,6 @@ def add_tags_to_existing_tag_group(tag_hash,tag_group_id, mode)
       end; nil
       errors.each {|error| error.map {|e| puts "tag #{e[0]} => #{e[1]}"}} ;nil      
     end
+  raise "Hell!!!" unless mode == 'run'  
   end
-  raise "Hell!!!" unless mode == 'run'
 end
