@@ -6,11 +6,12 @@ class PartialRepooler
   class PooledWellsError < StandardError; end
   class WellCountError   < StandardError; end
 
-  attr_reader :plate, :samples
+  attr_reader :plate, :samples, :targets
 
   def initialize(samples,plate)
     @samples = samples
     @plate = plate
+    @targets = []
 
     raise WellCountError, "#{source_wells.count} samples found, #{samples.count} expected" unless source_wells.count == samples.count
 
@@ -47,6 +48,7 @@ class PartialRepooler
       target = target_purpose.create!(:name=>target_name, :qc_state=>"pending")
       target.aliquots = source_wells.map {|w| AssetLink.create!(:descendant=>target,:ancestor=>w,:direct=>true); w.aliquots.first.clone }
       puts "Created! #{target.name}, #{target.id}, #{target.ean13_barcode}, #{target.sanger_human_barcode}"
+      @targets << target
     end
   end
 end
