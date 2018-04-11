@@ -1,5 +1,9 @@
-def change_chip_barcode(batch_id,description,new_chip_name,label)
+def change_chip_barcode(batch_id,description,descriptors,value)
   ActiveRecord::Base.transaction do
-    LabEvent.find_all_by_batch_id(batch_id).select {|e| e.description == description}.each {|lab| lab[:descriptors][label] = new_chip_name ; lab.save!}
+    LabEvent.where(batch_id: batch_id).select {|e| e.description == description}.each {|lab| lab[:descriptors][descriptors] = value ; lab.save!}
+    # rebroadcast
+    batch = Batch.find batch_id
+    batch.rebroadcast
   end
 end
+# change_chip_barcode(b.id,'Cluster generation','Chip Barcode',v)
