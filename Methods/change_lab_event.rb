@@ -6,4 +6,4 @@ def change_chip_barcode(batch_id,description,descriptors,value)
     batch.rebroadcast
   end
 end
-# change_chip_barcode(b.id,'Cluster generation','Chip Barcode',v)
+# change_chip_barcode(b.id,'Cluster generation','Chip Barcode',value)
