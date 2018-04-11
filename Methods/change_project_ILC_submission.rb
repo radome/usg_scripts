@@ -37,11 +37,6 @@ def change_project_on_submission(project_id,submission_ids,rt_ticket,login,mode)
       end
       lib_requests.map(&comment_on)
       
-      if mode == 'run'
-        puts "Broadcasting project updates to the warehouse.."
-        AmqpObserver.instance << submission
-        puts "..Done"
-      end
     end
     raise "Running in test mode" unless mode == 'run'
   end
