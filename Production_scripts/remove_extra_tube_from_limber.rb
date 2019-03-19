@@ -8,3 +8,4 @@ def destroy_tube(t)
   t.transfer_requests_as_target.map(&:destroy)
   t.destroy
 end
+
