@@ -9,4 +9,5 @@ def remove_duplicated_wells(plate_barcode)
     wells.map(&:destroy); nil
   end
 end
+
  

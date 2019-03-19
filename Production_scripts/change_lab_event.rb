@@ -11,6 +11,7 @@ def update_event(batch_id,descriptions,descriptor,value)
   batch = Batch.find batch_id
   batch.touch
 end
+
 # update_event(b.id,'Cluster Generation','Chip Barcode','HTNKVCCXY')
 # update_event(xxxxx,'Cluster Generation','Cartridge barcode','XXXXXXX-050V2')
 # LabEvent.where(batch_id: batch_id).where(description: descriptions).map {|e| e[:descriptors].delete("Chip barcode"); e.save!}
