@@ -67,7 +67,7 @@ def split_asset_groups_and_update(split_asset_groups_hash,study_to_id,user,rt_ti
     puts "#{ag.name} => #{new_name}"
     ag_new = AssetGroup.create!(name: new_name, user_id: user.id, study_id: study_to_id)
     orders = Order.where(asset_group_id: ag.id).select {|o| o.submission.state == "ready"}
-    # assumption is that above will return 1 order with a state of 'ready' if it doesn't then the logic is floored and we need to bale out
+    # assumption is that above will return 1 order with a state of 'ready' if it doesn't then the logic is flawed and we need to bale out
     if orders.size > 1
       raise "More than one order of state READY found... time to tweak the code!"
     else
