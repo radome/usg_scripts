@@ -7,3 +7,5 @@ def change_library_type_name(lane_ids, lib_type_name = "Chromium single cell")
     batches.map {|b| b.touch}; nil
   end
 end
+
+# select DISTINCT(entity_id_lims) from iseq_flowcell where BINARY pipeline_id_lims LIKE '%chromium single cell%';
