@@ -110,7 +110,10 @@ def update_whole_asset_groups(whole_asset_groups,study_to_id)
     if orders.size > 1
       raise "More than one order of state READY found... time to tweak the code!"
     else
-      orders.first.requests.each {|request| request.initial_study_id = study_to_id; request.save!}
+      order = orders.first
+      order.requests.each {|request| request.initial_study_id = study_to_id; request.save!}
+      order.study_id = study_to_id
+      order.save(validate:false)
     end
   end
 end
