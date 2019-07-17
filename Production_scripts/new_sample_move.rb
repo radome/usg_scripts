@@ -136,7 +136,7 @@ def move_samples(sample_names,study_from_id,study_to_id,user_login,rt_ticket,mod
 
       puts "Moving sample #{sample.id} #{sample.name}"
       [sample].map(&comment_on)
-      fluidigm_plates.push(*sample.assets.select {|a| a.sti_type == "Well"}.map(&:plate).uniq.compact.select {|p| p.purpose.name.match(/Fluid/)}.map(&:id))
+      fluidigm_plates.push(*sample.receptacles.select {|a| a.sti_type == "Well"}.map(&:plate).uniq.compact.select {|p| p.purpose.name.match(/Fluid/)}.map(&:id))
       sample.aliquots.where(study_id: study_from_id).find_each do |aliquot|
         aliquot.study_id = study_to_id
         aliquot.save!
