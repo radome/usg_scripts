@@ -31,7 +31,7 @@ def find_asset_groups(sample_names)
   sample_names.each do |sample_name|
     sample = Sample.find_by(name: sample_name)
     asset_groups = sample.asset_groups
-    unless asset_groups.empty?
+    if !asset_groups.empty?
       asset_groups.each do |ag|
         hash[ag.name] << sample_name
       end
@@ -47,42 +47,43 @@ def find_whole_and_split_asset_groups(asset_group_sample_hash,sample_names)
   asset_group_sample_hash.each do |ag_name,samples|
     asset_group = AssetGroup.find_by(name: ag_name)
     order = Order.find_by(asset_group_id: asset_group.id)
-    if asset_group.assets.map(&:samples).flatten.size == samples.size
-      puts "#{order.study_id} #{order.submission_id} #{order.submission.orders.size} #{ag_name} :: All assets to be moved"
+    aliquot_count = asset_group.assets.map(&:aliquots).flatten.size
+    if  aliquot_count == samples.size
+      puts "#{order.study_id} #{order.submission_id} #{order.submission.orders.size} #{ag_name} - #{aliquot_count}/#{samples.size} :: All assets to be moved"
       whole_asset_groups << asset_group
       # sample_move
     else
-      puts "#{order.study_id} #{order.submission_id} #{order.submission.orders.size} #{ag_name} :: Not all assets to be moved - split"
-      to_remove = sample_names & asset_group.assets.map(&:sample).map(&:name)
+      puts "#{order.study_id} #{order.submission_id} #{order.submission.orders.size} #{ag_name} - #{aliquot_count}/#{samples.size} :: Not all assets to be moved - split"
+      to_remove = sample_names & asset_group.assets.map(&:aliquots).flatten.map(&:sample).map(&:name)
       to_remove.map(&split_asset_groups_hash[asset_group].method(:<<))
     end
   end; nil
   return whole_asset_groups, split_asset_groups_hash
 end
 
-def split_asset_groups_and_update(split_asset_groups_hash,study_to_id,user,rt_ticket)
+def split_asset_groups_and_update(split_asset_groups_hash,user,rt_ticket)
   new_orders =[]
   split_asset_groups_hash.each do |ag,to_remove|
     new_name = ag.name+"_#{rt_ticket}"
     puts "#{ag.name} => #{new_name}"
-    ag_new = AssetGroup.create!(name: new_name, user_id: user.id, study_id: study_to_id)
+    ag_new = AssetGroup.create!(name: new_name, user_id: user.id, study: @study_to)
     orders = Order.where(asset_group_id: ag.id).select {|o| o.submission.state == "ready"}
     # assumption is that above will return 1 order with a state of 'ready' if it doesn't then the logic is flawed and we need to bale out
     if orders.size > 1
       raise "More than one order of state READY found... time to tweak the code!"
     else
-      assets = ag.assets.select {|a| to_remove.include?(a.sample.name)}
+      assets = ag.assets.select {|a| to_remove.include?(a.aliquots.first.sample.name)}
       
       # remove the assets from the old order
       puts "remove the assets from the old order"
       old_order = orders.first
       old_order.submitted_assets.where(asset: assets).map(&:delete)
-      old_order.save!
+      old_order.save(validate:false)
       
       # create new order!
       puts "create new order!"
       new_order = old_order.dup
-      new_order.update_attributes!(study_id: study_to_id, user_id: user.id, asset_group_id: ag_new.id, asset_group_name: ag_new.name)
+      new_order.update_attributes!(study: @study_to, user_id: user.id, asset_group_id: ag_new.id, asset_group_name: ag_new.name)
       
       # add the assets to the new order and asset group
       puts "add the assets to the new order and asset group"
@@ -93,41 +94,53 @@ def split_asset_groups_and_update(split_asset_groups_hash,study_to_id,user,rt_ti
       ag.save!
       ag_new.assets << assets
       ag_new.save!
-      puts "old #{ag.name} : #{ag.assets.map(&:sample).map(&:name).size}"
-      puts "new #{ag_new.name} : #{ag_new.assets.map(&:sample).map(&:name).size}"
+      puts "old #{ag.name} : #{ag.assets.map(&:aliquots).flatten.size}"
+      puts "new #{ag_new.name} : #{ag_new.assets.map(&:aliquots).flatten.size}"
     end
   end
+  puts "Created..."
+  new_orders.each {|o| puts "#{o.id} :: #{o.asset_group_name}"}
   new_orders.each do |order|
-    puts "#{order.id} :: #{order.asset_group.name} - #{order.asset_group.assets.map(&:sample).map(&:name).size}"
-    order.requests.each {|request| request.initial_study_id = study_to_id; request.save!}
+    puts "#{order.id} :: #{order.asset_group.name} - #{order.asset_group.assets.map(&:aliquots).flatten.size}"
+    order.requests.each {|request| request.initial_study = @study_to; request.save!}
   end; nil
 end
 
-def update_whole_asset_groups(whole_asset_groups,study_to_id)
+def update_whole_asset_groups(whole_asset_groups)
   whole_asset_groups.each do |asset_group|
-    asset_group.update_attributes!(:study_id => study_to_id)
+    asset_group.update_attributes!(:study => @study_to)
     orders = Order.where(asset_group_id: asset_group.id).select {|o| o.submission.state == "ready"}
     if orders.size > 1
       raise "More than one order of state READY found... time to tweak the code!"
-    else
+    elsif !orders.empty?
       order = orders.first
-      order.requests.each {|request| request.initial_study_id = study_to_id; request.save!}
-      order.study_id = study_to_id
+      order.requests.each {|request| request.initial_study = @study_to; request.save!}
+      order.study = @study_to
       order.save(validate:false)
     end
   end
 end
 
-def move_samples(sample_names,study_from_id,study_to_id,user_login,rt_ticket,mode)
+def update_create_requests_on(asset)
+  requests = asset.requests.where(request_type_id: [11,143])
+  requests.map {|r| r.initial_study = @study_to; r.save!} unless requests.empty?
+end
+
+def update_seq_requests(requests)
+  requests.each {|r| r.initial_study = @study_to; r.save!}
+end
+
+def new_move_samples(sample_names,study_from_id,study_to_id,user_login,rt_ticket,mode)
   ActiveRecord::Base.transaction do 
     fluidigm_plates = []; lane_ids = []; pb_tube_ids = []; movable_classes = ['Well','SampleTube','LibraryTube']
     user = User.find_by_login(user_login) or raise StandardError, "Cannot find the user #{user_login.inspect}"
-    study_from, study_to = Study.find(study_from_id), Study.find(study_to_id)
+    @study_to = Study.find(study_to_id)
   
     asset_group_sample_hash = find_asset_groups(sample_names)
     whole_asset_groups, split_asset_groups_hash = find_whole_and_split_asset_groups(asset_group_sample_hash,sample_names)
-    update_whole_asset_groups(whole_asset_groups,study_to_id)
-    split_asset_groups_and_update(split_asset_groups_hash,study_to_id,user,rt_ticket)
+    update_whole_asset_groups(whole_asset_groups)
+    # puts split_asset_groups_hash.inspect
+    split_asset_groups_and_update(split_asset_groups_hash,user,rt_ticket)
   
     sample_names.each do |sample_name|
       sample = Sample.find_by_name(sample_name)
@@ -143,6 +156,7 @@ def move_samples(sample_names,study_from_id,study_to_id,user_login,rt_ticket,mod
         aliquot.receptacle.tap do |asset|
           if movable_classes.include?(asset.class.name)
             # puts "\tMoving #{asset.sti_type} #{asset.id}"
+            update_create_requests_on(asset)
             comment_on.call(asset)
           elsif asset.is_a?(Lane)
             lane_ids << asset.id
@@ -171,14 +185,18 @@ def move_samples(sample_names,study_from_id,study_to_id,user_login,rt_ticket,mod
     else
       if !lane_ids.empty?
         puts "Rebroadcasting batches..."
-        Lane.where(id: lane_ids.uniq).map(&:creation_batches).flatten.uniq.each do |batch|
+        lanes = Lane.where(id: lane_ids.uniq)
+        update_seq_requests(lanes.map(&:requests_as_target).flatten)
+        lanes.map(&:creation_batches).flatten.uniq.each do |batch|
           puts "lane batches: #{batch.id}"
           batch.touch
         end
       end
 
       if !pb_tube_ids.empty?
-        PacBioLibraryTube.where(id: pb_tube_ids.uniq).map(&:requests).flatten.map(&:batch).uniq.each do |batch|
+        requests = PacBioLibraryTube.where(id: pb_tube_ids.uniq).map(&:requests).flatten
+        update_seq_requests(requests)
+        requests.map(&:batch).compact.uniq.each do |batch|
           puts "pb batches: #{batch.id}"
           batch.touch
         end
@@ -192,4 +210,4 @@ def move_samples(sample_names,study_from_id,study_to_id,user_login,rt_ticket,mod
   end
 end
 
-# move_samples(sample_names,study_from_id,study_to_id,user_login,rt_ticket,mode)
+# new_move_samples(sample_names,study_from_id,study_to_id,user_login,rt_ticket,mode)
