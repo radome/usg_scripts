@@ -10,4 +10,10 @@ def remove_duplicated_wells(plate_barcode)
   end
 end
 
- 
+
+p.wells.each do |w|
+  wells=p.wells.located_at(w.map_description)
+  if wells.size > 1
+    wells.select {|r| r.aliquots.size == 0}.first.destroy
+  end
+end
