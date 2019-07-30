@@ -23,5 +23,5 @@ end
 #   'Cluster cartridge' => '20348542',
 #   'SBS cartridge' => '20351654'
 # }.each do |k,v|
-#   update_event(70243,descriptions,k,v)
+#   update_event(xxxxx,descriptions,k,v)
 # end
