@@ -98,5 +98,5 @@ def update_sample_accession_by_sample(sample_names,study_id,login)
   end
 end
 
-# ActiveRecord::Base.logger.level = 3
+ActiveRecord::Base.logger.level = 3
 # update_sample_accession_by_sample(sample_names,study_id,login)

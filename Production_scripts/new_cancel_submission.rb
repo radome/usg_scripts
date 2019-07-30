@@ -15,10 +15,10 @@ def new_cancel_submission(sub_identifiers)
         if req.state == 'pending'
           req.cancel_before_started!
         else
-          req.cancel! unless req.state == 'cancelled'
+          req.cancel! unless req.state == 'cancelled' || req.state == 'failed'
         end
       end
-      TransferRequest.where(submission_id: sub.id).map(&:cancel!); nil
+      TransferRequest.where(submission_id: sub.id).select {|tr| tr.state != 'failed'}.map(&:cancel!); nil
       sub.reload
       if sub.requests.map(&:state).uniq == ['cancelled']
         sub.state = 'cancelled'; sub.save!
@@ -30,3 +30,4 @@ def new_cancel_submission(sub_identifiers)
   end
 end
 
+# new_cancel_submission([])

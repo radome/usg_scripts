@@ -1,4 +1,6 @@
-def destroy_tube(t)
+def destroy_tube(barcode)
+  t = Tube.find_by_barcode(barcode)
+  raise "Unable to find tube #{barcode}" if t.nil?
   als=AssetLink.where(ancestor_id: t.id); nil
   als.each {|l| l.update_attribute(ancestor_id: nil)}
   als=AssetLink.where(descendant_id: t.id); nil
@@ -8,4 +10,3 @@ def destroy_tube(t)
   t.transfer_requests_as_target.map(&:destroy)
   t.destroy
 end
-
